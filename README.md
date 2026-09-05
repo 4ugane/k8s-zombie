@@ -1,5 +1,11 @@
 # k8s-zombie
 
+[![CI](https://github.com/4ugane/k8s-zombie/actions/workflows/ci.yml/badge.svg)](https://github.com/4ugane/k8s-zombie/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/4ugane/k8s-zombie?include_prereleases&sort=semver)](https://github.com/4ugane/k8s-zombie/releases/latest)
+[![Go Reference](https://pkg.go.dev/badge/github.com/4ugane/k8s-zombie.svg)](https://pkg.go.dev/github.com/4ugane/k8s-zombie)
+[![Go Report Card](https://goreportcard.com/badge/github.com/4ugane/k8s-zombie)](https://goreportcard.com/report/github.com/4ugane/k8s-zombie)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 **Find the Kubernetes resources nobody remembers, and see exactly what they're costing you.**
 
 k8s-zombie is a read-only CLI that scans a Kubernetes cluster for orphaned
@@ -61,7 +67,24 @@ skip it, no matter how orphaned it looks.
 
 ## Installation
 
-There's no tagged release yet — build it from source:
+**Download a prebuilt binary** (no Go toolchain needed) from the
+[latest release](https://github.com/4ugane/k8s-zombie/releases/latest) —
+archives are published for macOS, Linux, and Windows on both amd64 and arm64.
+
+```sh
+# macOS (Apple Silicon), adjust os/arch for your platform
+curl -sL https://github.com/4ugane/k8s-zombie/releases/latest/download/k8s-zombie_darwin_arm64.tar.gz \
+  | tar xz k8s-zombie
+sudo mv k8s-zombie /usr/local/bin/
+```
+
+**Or, with Go installed** (requires Go 1.27+):
+
+```sh
+go install github.com/4ugane/k8s-zombie/cmd/k8s-zombie@latest
+```
+
+**Or build from source:**
 
 ```sh
 git clone https://github.com/4ugane/k8s-zombie.git
@@ -69,7 +92,8 @@ cd k8s-zombie
 go build -o k8s-zombie ./cmd/k8s-zombie
 ```
 
-Requires Go 1.27+.
+A Homebrew tap and a `krew` plugin manifest (`kubectl krew install zombie`)
+are on the roadmap — see [Project status](#project-status).
 
 ## Usage
 
@@ -141,16 +165,16 @@ k8s-zombie is designed to be trivially safe to run against production:
 
 ## Project status
 
-**Working, not yet packaged.** The detection engine, cost estimation, all
-three output formats, and the CLI itself are built and tested (98 tests
-across the whole repo, `-race`-clean, 86–100% coverage per package). What's
-still ahead:
+**Working and packaged.** The detection engine, cost estimation, all four
+output formats, and the CLI itself are built and tested (98+ tests across
+the whole repo, `-race`-clean, 86–100% coverage per package), verified
+against a real cluster, and released as prebuilt binaries via `goreleaser`
+on every tagged version. What's still ahead:
 
 - An `envtest`/`kind`-based integration test exercising a full scan
-  end-to-end against a real (if ephemeral) API server
-- A CI pipeline
-- `goreleaser` packaging (Homebrew tap, GitHub release binaries) once the
-  module has a permanent path/home
+  end-to-end against a real (if ephemeral) API server, wired into CI
+- A Homebrew tap (`brew install 4ugane/tap/k8s-zombie`)
+- A `krew` plugin manifest (`kubectl krew install zombie`)
 
 See [`docs/architecture.md`](docs/architecture.md) and [`docs/adr/`](docs/adr/)
 for the full design history and every non-obvious decision behind this

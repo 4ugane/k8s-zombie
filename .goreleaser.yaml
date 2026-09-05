@@ -1,0 +1,48 @@
+version: 2
+
+project_name: k8s-zombie
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: k8s-zombie
+    main: ./cmd/k8s-zombie
+    binary: k8s-zombie
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X main.version={{ .Version }}
+
+archives:
+  - id: default
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+
+release:
+  github:
+    owner: 4ugane
+    name: k8s-zombie

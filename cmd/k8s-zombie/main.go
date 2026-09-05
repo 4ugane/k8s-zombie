@@ -14,6 +14,10 @@ import (
 	"github.com/4ugane/k8s-zombie/pkg/cost"
 )
 
+// version is set at build time via -ldflags "-X main.version=..." (see
+// .goreleaser.yaml); "dev" is the fallback for a local `go build`/`go run`.
+var version = "dev"
+
 func main() {
 	if err := newRootCmd().Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, "Error:", err)
@@ -25,6 +29,7 @@ func newRootCmd() *cobra.Command {
 	root := &cobra.Command{
 		Use:           "k8s-zombie",
 		Short:         "Scan a Kubernetes cluster for orphaned resources burning budget",
+		Version:       version,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
