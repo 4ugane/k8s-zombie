@@ -91,6 +91,16 @@ homebrew_casks:
     description: "Scan Kubernetes clusters for orphaned resources burning budget, with AWS cost estimates"
     binaries:
       - k8s-zombie
+    # The binary isn't code-signed/notarized (no Apple Developer account),
+    # so macOS Gatekeeper quarantines it on download and SIGKILLs it on first
+    # run. Strip the quarantine attribute post-install — standard practice
+    # for unsigned CLI casks.
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/k8s-zombie"]
+          end
 
 # Generates the krew plugin manifest and pushes it to a staging repo (a fork
 # of kubernetes-sigs/krew-index). krew-index doesn't accept direct pushes —
