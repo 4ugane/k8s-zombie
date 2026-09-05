@@ -21,15 +21,41 @@ builds:
       - arm64
     ldflags:
       - -s -w -X main.version={{ .Version }}
+  # Identical binary, built again under the kubectl-<plugin> naming convention
+  # krew requires — kubectl's plugin mechanism looks for a "kubectl-zombie"
+  # executable on PATH, so this build exists purely for that packaging need.
+  - id: kubectl-zombie
+    main: ./cmd/k8s-zombie
+    binary: kubectl-zombie
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X main.version={{ .Version }}
 
 archives:
   - id: default
+    ids: [k8s-zombie]
     formats: [tar.gz]
     format_overrides:
       - goos: windows
         formats: [zip]
     name_template: >-
       {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+  - id: krew
+    ids: [kubectl-zombie]
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    name_template: >-
+      kubectl-zombie_{{ .Version }}_{{ .Os }}_{{ .Arch }}
 
 checksum:
   name_template: "checksums.txt"
@@ -46,3 +72,44 @@ release:
   github:
     owner: 4ugane
     name: k8s-zombie
+
+# Requires a HOMEBREW_TAP_GITHUB_TOKEN secret in this repo's Actions settings
+# (a PAT for the 4ugane account with write access to the tap repo below) and
+# for github.com/4ugane/homebrew-tap to exist first — goreleaser pushes the
+# generated cask there, it doesn't create the repo itself. Casks (not the
+# older Formula format) are goreleaser's current supported path even for a
+# plain CLI binary like this one — see https://goreleaser.com/deprecations/#brews.
+homebrew_casks:
+  - name: k8s-zombie
+    ids: [default]
+    repository:
+      owner: 4ugane
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    directory: Casks
+    homepage: "https://github.com/4ugane/k8s-zombie"
+    description: "Scan Kubernetes clusters for orphaned resources burning budget, with AWS cost estimates"
+    binaries:
+      - k8s-zombie
+
+# Generates the krew plugin manifest and pushes it to a staging repo (a fork
+# of kubernetes-sigs/krew-index). krew-index doesn't accept direct pushes —
+# opening the actual PR from that fork to upstream is a manual, one-time-then-
+# per-release step; see README/project status.
+krews:
+  - name: zombie
+    ids: [krew]
+    repository:
+      owner: 4ugane
+      name: krew-index
+      token: "{{ .Env.KREW_INDEX_GITHUB_TOKEN }}"
+    homepage: "https://github.com/4ugane/k8s-zombie"
+    short_description: "Find orphaned Kubernetes resources burning budget"
+    description: |
+      k8s-zombie scans a cluster for orphaned resources (unattached PVCs,
+      zero-endpoint Services, idle Deployments, stale HPAs, and more) and
+      reports them with AWS cost estimates. Read-only — never deletes or
+      modifies anything.
+    caveats: |
+      Requires a valid kubeconfig. See https://github.com/4ugane/k8s-zombie
+      for full documentation.
