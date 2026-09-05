@@ -1,0 +1,10 @@
+region: us-east-1
+default_ebs_volume_type: gp3
+ebs_usd_per_gb_month:
+  gp2: 0.10
+  gp3: 0.08
+  io1: 0.125
+  io2: 0.125
+# Blended NLB/ALB estimate (~$0.0225/hr * 730 hours), not distinguishing LB type and
+# not modeling LCU usage-based charges (ADR-0004: directional estimate, not billing-grade).
+load_balancer_usd_per_month: 16.43
