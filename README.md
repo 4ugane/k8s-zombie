@@ -89,7 +89,7 @@ go install github.com/4ugane/k8s-zombie/cmd/k8s-zombie@latest
 ```sh
 git clone https://github.com/4ugane/k8s-zombie.git
 cd k8s-zombie
-go build -o k8s-zombie ./cmd/k8s-zombie
+go build -o bin/k8s-zombie ./cmd/k8s-zombie
 ```
 
 A Homebrew tap and a `krew` plugin manifest (`kubectl krew install zombie`)
@@ -178,7 +178,7 @@ on every tagged version. What's still ahead:
 
 See [`docs/architecture.md`](docs/architecture.md) and [`docs/adr/`](docs/adr/)
 for the full design history and every non-obvious decision behind this
-project, and [`docs/superpowers/specs/`](docs/superpowers/specs/) for the
+project, and [`docs/specs/`](docs/specs/) for the
 original design spec.
 
 ## Development

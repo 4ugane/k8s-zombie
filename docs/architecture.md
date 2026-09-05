@@ -1,7 +1,7 @@
 # k8s-zombie — Architecture
 
 See `docs/adr/` for the individual decision records referenced below, and
-`docs/superpowers/specs/2026-09-04-k8s-zombie-design.md` for the full v1 design spec
+`docs/specs/2026-09-04-k8s-zombie-design.md` for the full v1 design spec
 this architecture formalizes.
 
 ## Requirements Summary
