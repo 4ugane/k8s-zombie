@@ -113,8 +113,15 @@ krews:
       owner: 4ugane
       name: krew-index
       token: "{{ .Env.KREW_INDEX_GITHUB_TOKEN }}"
+    # Without this, goreleaser's default committer (goreleaserbot) authors the
+    # manifest commit — and EasyCLA checks the commit author, not the PR
+    # opener, so a CLA signed under the 4ugane account never attaches to a
+    # goreleaserbot-authored commit. Match the identity that signs the CLA.
+    commit_author:
+      name: 4ugane
+      email: 325434070+4ugane@users.noreply.github.com
     homepage: "https://github.com/4ugane/k8s-zombie"
-    short_description: "Find orphaned Kubernetes resources burning budget"
+    short_description: "Find orphaned resources burning budget"
     description: |
       k8s-zombie scans a cluster for orphaned resources (unattached PVCs,
       zero-endpoint Services, idle Deployments, stale HPAs, and more) and
