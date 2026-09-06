@@ -92,8 +92,15 @@ cd k8s-zombie
 go build -o bin/k8s-zombie ./cmd/k8s-zombie
 ```
 
-A Homebrew tap and a `krew` plugin manifest (`kubectl krew install zombie`)
-are on the roadmap — see [Project status](#project-status).
+**Or via Homebrew:**
+
+```sh
+brew install 4ugane/tap/k8s-zombie
+```
+
+A `krew` plugin manifest is generated on every release too — see
+[Project status](#project-status) for what's left before
+`kubectl krew install zombie` works directly.
 
 ## Usage
 
@@ -169,12 +176,18 @@ k8s-zombie is designed to be trivially safe to run against production:
 output formats, and the CLI itself are built and tested (98+ tests across
 the whole repo, `-race`-clean, 86–100% coverage per package), verified
 against a real cluster, and released as prebuilt binaries via `goreleaser`
-on every tagged version. What's still ahead:
+on every tagged version. Distribution is live on two channels:
 
-- An `envtest`/`kind`-based integration test exercising a full scan
-  end-to-end against a real (if ephemeral) API server, wired into CI
-- A Homebrew tap (`brew install 4ugane/tap/k8s-zombie`)
-- A `krew` plugin manifest (`kubectl krew install zombie`)
+- **Homebrew** — `brew install 4ugane/tap/k8s-zombie` (verified end-to-end,
+  including the macOS Gatekeeper quarantine fix)
+- **krew** — plugin manifest is generated and pushed to a staging fork
+  (`4ugane/krew-index`) on every tagged release; opening the PR from that
+  fork to upstream `kubernetes-sigs/krew-index` is still a manual,
+  per-release step until `kubectl krew install zombie` works directly
+
+A `kind`-based integration test exercises a full scan end-to-end against a
+real (if ephemeral) API server with real controllers, and runs in CI on every
+push and PR.
 
 See [`docs/architecture.md`](docs/architecture.md) and [`docs/adr/`](docs/adr/)
 for the full design history and every non-obvious decision behind this
@@ -189,6 +202,20 @@ go vet ./...
 go test ./... -race -cover
 gofmt -l .
 ```
+
+The integration test needs a real cluster and is excluded from the default
+`go test ./...` run via a build tag:
+
+```sh
+go test -tags=integration -v -timeout=5m ./test/integration/...
+```
+
+It targets the kubeconfig's current context by default (`kind` in CI, e.g.
+`docker-desktop` locally); set `INTEGRATION_KUBE_CONTEXT` to target a
+different one. It creates and tears down its own `k8s-zombie-test*`
+namespaces and a `retain-test` StorageClass — safe to run against any
+cluster you're comfortable applying test manifests to, but never a
+production one.
 
 Every detector was built test-first (RED confirmed against the unmodified
 code before each fix or feature landed) — new detectors or fixes are expected

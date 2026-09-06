@@ -28,3 +28,19 @@ jobs:
           fi
       - name: test
         run: go test ./... -race -cover
+
+  integration-test:
+    name: Integration Test (kind)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.27"
+      - uses: helm/kind-action@v1
+        with:
+          cluster_name: k8s-zombie
+      - name: integration test
+        env:
+          INTEGRATION_KUBE_CONTEXT: kind-k8s-zombie
+        run: go test -tags=integration -v -timeout=5m ./test/integration/...

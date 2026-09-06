@@ -106,15 +106,9 @@ homebrew_casks:
 # of kubernetes-sigs/krew-index). krew-index doesn't accept direct pushes —
 # opening the actual PR from that fork to upstream is a manual, one-time-then-
 # per-release step; see README/project status.
-#
-# skip_upload: the 4ugane/krew-index fork + KREW_INDEX_GITHUB_TOKEN don't
-# exist yet (Homebrew is going first) — skip the actual push until they do,
-# so a release still succeeds end-to-end for the channels that ARE ready.
-# Flip to false (or remove) once that fork/token are set up.
 krews:
   - name: zombie
     ids: [krew]
-    skip_upload: true
     repository:
       owner: 4ugane
       name: krew-index
