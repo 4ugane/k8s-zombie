@@ -92,10 +92,16 @@ cd k8s-zombie
 go build -o bin/k8s-zombie ./cmd/k8s-zombie
 ```
 
-**Or via Homebrew:**
+**Or via Homebrew** (this is a custom tap — it won't show up on brew.sh or
+in a plain `brew search`; installing it directly, or tapping it first,
+both work):
 
 ```sh
 brew install 4ugane/tap/k8s-zombie
+
+# equivalently:
+brew tap 4ugane/tap
+brew install k8s-zombie
 ```
 
 A `krew` plugin manifest is generated on every release too — see
