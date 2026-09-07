@@ -50,8 +50,14 @@ outputs:
 runs:
   using: "composite"
   steps:
+    # Every input below is passed via `env:`, never spliced as `${{ }}` into the
+    # script body — a workflow could feed this action an input derived from
+    # untrusted content (e.g. a PR title), and interpolating that directly into
+    # a run: block is a script-injection risk, not just a style preference.
     - name: Install k8s-zombie
       shell: bash
+      env:
+        ZOMBIE_VERSION: ${{ inputs.version }}
       run: |
         set -euo pipefail
 
@@ -69,11 +75,10 @@ runs:
         ext="tar.gz"
         [ "$os" = "windows" ] && ext="zip"
 
-        version="${{ inputs.version }}"
-        if [ "$version" = "latest" ]; then
+        if [ "$ZOMBIE_VERSION" = "latest" ]; then
           tag="$(curl -sf https://api.github.com/repos/4ugane/k8s-zombie/releases/latest | grep -o '"tag_name": *"[^"]*"' | cut -d'"' -f4)"
         else
-          tag="$version"
+          tag="$ZOMBIE_VERSION"
         fi
         version_no_v="${tag#v}"
 
@@ -98,16 +103,24 @@ runs:
     - name: Run scan
       id: scan
       shell: bash
+      env:
+        ZOMBIE_CONTEXT: ${{ inputs.context }}
+        ZOMBIE_NAMESPACE: ${{ inputs.namespace }}
+        ZOMBIE_EXCLUDE_NAMESPACE: ${{ inputs.exclude-namespace }}
+        ZOMBIE_OUTPUT: ${{ inputs.output }}
+        ZOMBIE_PRICING_FILE: ${{ inputs.pricing-file }}
+        ZOMBIE_MIN_AGE: ${{ inputs.min-age }}
+        ZOMBIE_FAIL_ON_FINDINGS: ${{ inputs.fail-on-findings }}
       run: |
         set -euo pipefail
 
         base_args=()
-        [ -n "${{ inputs.context }}" ] && base_args+=(--context "${{ inputs.context }}")
-        [ -n "${{ inputs.namespace }}" ] && base_args+=(--namespace "${{ inputs.namespace }}")
-        [ -n "${{ inputs.pricing-file }}" ] && base_args+=(--pricing-file "${{ inputs.pricing-file }}")
-        [ -n "${{ inputs.min-age }}" ] && base_args+=(--min-age "${{ inputs.min-age }}")
-        if [ -n "${{ inputs.exclude-namespace }}" ]; then
-          IFS=',' read -ra ns <<< "${{ inputs.exclude-namespace }}"
+        [ -n "$ZOMBIE_CONTEXT" ] && base_args+=(--context "$ZOMBIE_CONTEXT")
+        [ -n "$ZOMBIE_NAMESPACE" ] && base_args+=(--namespace "$ZOMBIE_NAMESPACE")
+        [ -n "$ZOMBIE_PRICING_FILE" ] && base_args+=(--pricing-file "$ZOMBIE_PRICING_FILE")
+        [ -n "$ZOMBIE_MIN_AGE" ] && base_args+=(--min-age "$ZOMBIE_MIN_AGE")
+        if [ -n "$ZOMBIE_EXCLUDE_NAMESPACE" ]; then
+          IFS=',' read -ra ns <<< "$ZOMBIE_EXCLUDE_NAMESPACE"
           for n in "${ns[@]}"; do base_args+=(--exclude-namespace "$n"); done
         fi
 
@@ -117,22 +130,21 @@ runs:
         count="$(jq '[.[] | select(.status == "Orphaned")] | length' "$workdir/report.json")"
         echo "findings-count=$count" >> "$GITHUB_OUTPUT"
 
-        requested="${{ inputs.output }}"
         report_path="$workdir/report.json"
-        if [ -n "$requested" ] && [ "$requested" != "json" ]; then
+        if [ -n "$ZOMBIE_OUTPUT" ] && [ "$ZOMBIE_OUTPUT" != "json" ]; then
           ext="txt"
-          case "$requested" in
+          case "$ZOMBIE_OUTPUT" in
             markdown) ext="md" ;;
             html) ext="html" ;;
           esac
           report_path="$workdir/report.$ext"
-          k8s-zombie scan "${base_args[@]}" --output "$requested" > "$report_path"
+          k8s-zombie scan "${base_args[@]}" --output "$ZOMBIE_OUTPUT" > "$report_path"
         fi
         echo "report-path=$report_path" >> "$GITHUB_OUTPUT"
 
         echo "k8s-zombie found $count orphaned resource(s) — full report: $report_path"
 
-        if [ "${{ inputs.fail-on-findings }}" = "true" ] && [ "$count" -gt 0 ]; then
+        if [ "$ZOMBIE_FAIL_ON_FINDINGS" = "true" ] && [ "$count" -gt 0 ]; then
           echo "::error::k8s-zombie found $count orphaned resource(s)"
           exit 1
         fi

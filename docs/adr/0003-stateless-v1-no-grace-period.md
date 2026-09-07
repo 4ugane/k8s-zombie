@@ -31,3 +31,14 @@ invocation reports whatever is orphaned in that single snapshot.
 ## Trade-offs
 Simplicity and CI-friendliness are prioritized over precision, pending real-world data
 on how much noise v1 actually produces.
+
+## Update: `--min-age`
+The mid-rollout noise called out above got a partial mitigation: `--min-age`
+(e.g. `--min-age 1h`) drops any finding whose resource is younger than that
+threshold. This does **not** revisit the decision above — it reads
+`creationTimestamp`, a field already present on the object within the same
+single snapshot, so it adds no persisted state, no state-file format, and no
+cross-run memory. It reduces false positives from "just created," not "just
+became orphaned"; a resource that's been orphaned for five minutes but was
+created a year ago is still reported immediately, same as before this flag
+existed.

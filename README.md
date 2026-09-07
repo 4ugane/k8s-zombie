@@ -120,7 +120,7 @@ k8s-zombie scan [flags]
 | `--context` | current kubeconfig context | Which cluster context to scan, same semantics as `kubectl --context` |
 | `--namespace` | (all namespaces) | Only report findings in this namespace (cluster-scoped findings, like `unused-namespace`, are always shown regardless) |
 | `--exclude-namespace` | (none) | Namespace to drop from the report — repeatable, e.g. `--exclude-namespace kube-system --exclude-namespace argocd` |
-| `--output` | `table` | `table`, `json`, or `markdown` |
+| `--output` | `table` | `table`, `json`, `markdown`, or `html` |
 | `--pricing-file` | bundled AWS pricing | Path to a YAML file overriding the built-in cost table (see [Cost estimates](#how-cost-estimates-work)) |
 | `--min-age` | disabled | Ignore resources created more recently than this (e.g. `1h`, `30m`) — a grace period to avoid false positives on a resource still initializing mid-rollout. Disabled (`0`) by default; opt in for CI/CD pipelines where scans can run seconds after a deploy |
 
@@ -215,10 +215,12 @@ k8s-zombie is designed to be trivially safe to run against production:
 ## Project status
 
 **Working and packaged.** The detection engine, cost estimation, all four
-output formats, and the CLI itself are built and tested (98+ tests across
-the whole repo, `-race`-clean, 86–100% coverage per package), verified
+output formats, and the CLI itself are built and tested (160+ tests across
+the whole repo, `-race`-clean, 89–100% coverage per package), verified
 against a real cluster, and released as prebuilt binaries via `goreleaser`
-on every tagged version. Distribution is live on two channels:
+on every tagged version. Distribution is live on two channels, plus a
+[GitHub Action](#github-action) for running scans directly in CI/PR
+pipelines:
 
 - **Homebrew** — `brew install 4ugane/tap/k8s-zombie` (verified end-to-end,
   including the macOS Gatekeeper quarantine fix)
