@@ -1,0 +1,138 @@
+name: "k8s-zombie scan"
+description: "Scan a Kubernetes cluster for orphaned resources and report AWS cost estimates"
+author: "4ugane"
+branding:
+  icon: "search"
+  color: "purple"
+
+inputs:
+  version:
+    description: "k8s-zombie release to install (e.g. v0.1.5). Defaults to the latest release."
+    required: false
+    default: "latest"
+  context:
+    description: "kubeconfig context to scan (default: current context)"
+    required: false
+    default: ""
+  namespace:
+    description: "Only report findings in this namespace"
+    required: false
+    default: ""
+  exclude-namespace:
+    description: "Comma-separated namespaces to exclude, e.g. kube-system,cert-manager"
+    required: false
+    default: ""
+  output:
+    description: "Report format written to report-path: table, json, markdown, or html"
+    required: false
+    default: "table"
+  pricing-file:
+    description: "Path to a custom pricing YAML file"
+    required: false
+    default: ""
+  min-age:
+    description: "Ignore resources created more recently than this (e.g. 1h, 30m)"
+    required: false
+    default: ""
+  fail-on-findings:
+    description: "Fail this step if any orphaned resource is found — set true to gate a PR"
+    required: false
+    default: "false"
+
+outputs:
+  report-path:
+    description: "Path to the generated report, in the requested output format"
+    value: ${{ steps.scan.outputs.report-path }}
+  findings-count:
+    description: "Number of orphaned findings (Status: Orphaned) from the scan"
+    value: ${{ steps.scan.outputs.findings-count }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install k8s-zombie
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        case "$RUNNER_OS" in
+          Linux) os="linux" ;;
+          macOS) os="darwin" ;;
+          Windows) os="windows" ;;
+          *) echo "::error::unsupported RUNNER_OS: $RUNNER_OS"; exit 1 ;;
+        esac
+        case "$RUNNER_ARCH" in
+          X64) arch="amd64" ;;
+          ARM64) arch="arm64" ;;
+          *) echo "::error::unsupported RUNNER_ARCH: $RUNNER_ARCH"; exit 1 ;;
+        esac
+        ext="tar.gz"
+        [ "$os" = "windows" ] && ext="zip"
+
+        version="${{ inputs.version }}"
+        if [ "$version" = "latest" ]; then
+          tag="$(curl -sf https://api.github.com/repos/4ugane/k8s-zombie/releases/latest | grep -o '"tag_name": *"[^"]*"' | cut -d'"' -f4)"
+        else
+          tag="$version"
+        fi
+        version_no_v="${tag#v}"
+
+        asset="k8s-zombie_${version_no_v}_${os}_${arch}.${ext}"
+        base_url="https://github.com/4ugane/k8s-zombie/releases/download/${tag}"
+
+        workdir="$(mktemp -d)"
+        curl -sfL "${base_url}/checksums.txt" -o "$workdir/checksums.txt"
+        curl -sfL "${base_url}/${asset}" -o "$workdir/${asset}"
+
+        (cd "$workdir" && grep " ${asset}\$" checksums.txt | sha256sum -c -)
+
+        if [ "$ext" = "zip" ]; then
+          unzip -q "$workdir/${asset}" -d "$workdir/bin"
+        else
+          mkdir -p "$workdir/bin"
+          tar xzf "$workdir/${asset}" -C "$workdir/bin"
+        fi
+        chmod +x "$workdir/bin/k8s-zombie"* 2>/dev/null || true
+        echo "$workdir/bin" >> "$GITHUB_PATH"
+
+    - name: Run scan
+      id: scan
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        base_args=()
+        [ -n "${{ inputs.context }}" ] && base_args+=(--context "${{ inputs.context }}")
+        [ -n "${{ inputs.namespace }}" ] && base_args+=(--namespace "${{ inputs.namespace }}")
+        [ -n "${{ inputs.pricing-file }}" ] && base_args+=(--pricing-file "${{ inputs.pricing-file }}")
+        [ -n "${{ inputs.min-age }}" ] && base_args+=(--min-age "${{ inputs.min-age }}")
+        if [ -n "${{ inputs.exclude-namespace }}" ]; then
+          IFS=',' read -ra ns <<< "${{ inputs.exclude-namespace }}"
+          for n in "${ns[@]}"; do base_args+=(--exclude-namespace "$n"); done
+        fi
+
+        workdir="$(mktemp -d)"
+        k8s-zombie scan "${base_args[@]}" --output json > "$workdir/report.json"
+
+        count="$(jq '[.[] | select(.status == "Orphaned")] | length' "$workdir/report.json")"
+        echo "findings-count=$count" >> "$GITHUB_OUTPUT"
+
+        requested="${{ inputs.output }}"
+        report_path="$workdir/report.json"
+        if [ -n "$requested" ] && [ "$requested" != "json" ]; then
+          ext="txt"
+          case "$requested" in
+            markdown) ext="md" ;;
+            html) ext="html" ;;
+          esac
+          report_path="$workdir/report.$ext"
+          k8s-zombie scan "${base_args[@]}" --output "$requested" > "$report_path"
+        fi
+        echo "report-path=$report_path" >> "$GITHUB_OUTPUT"
+
+        echo "k8s-zombie found $count orphaned resource(s) — full report: $report_path"
+
+        if [ "${{ inputs.fail-on-findings }}" = "true" ] && [ "$count" -gt 0 ]; then
+          echo "::error::k8s-zombie found $count orphaned resource(s)"
+          exit 1
+        fi

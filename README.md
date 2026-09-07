@@ -145,6 +145,40 @@ Markdown output looks like this:
 | orphaned-pv | PersistentVolume |  | pvc-a1b2c3d4 | PersistentVolume is Released (Retain-policy leftover still billing for the underlying volume) | High | $40.00 | Orphaned |
 ```
 
+## GitHub Action
+
+Run k8s-zombie as a step in your own workflow — it installs the matching
+release binary (checksum-verified against `checksums.txt`) and runs a scan,
+with no Go toolchain or manual download needed:
+
+```yaml
+- uses: 4ugane/k8s-zombie@v0.1.5
+  with:
+    output: markdown
+    exclude-namespace: kube-system,cert-manager
+    fail-on-findings: "true"   # fail this step (and the PR check) on any finding
+```
+
+The action assumes kubectl/kubeconfig access to the target cluster is already
+set up earlier in the job (e.g. via `aws eks update-kubeconfig`, `az aks
+get-credentials`, or a self-hosted runner) — same as running the CLI
+directly.
+
+| Input | Default | What it does |
+|---|---|---|
+| `version` | `latest` | Which k8s-zombie release to install |
+| `context` | current kubeconfig context | Same as `--context` |
+| `namespace` | (all namespaces) | Same as `--namespace` |
+| `exclude-namespace` | (none) | Comma-separated, e.g. `kube-system,cert-manager` |
+| `output` | `table` | Format written to the `report-path` output |
+| `pricing-file` | bundled AWS pricing | Same as `--pricing-file` |
+| `min-age` | disabled | Same as `--min-age` |
+| `fail-on-findings` | `false` | Fail the step (and the PR check) if any orphaned resource is found |
+
+**Outputs:** `report-path` (file path to the generated report) and
+`findings-count` (number of orphaned findings), for a later step to read,
+attach as a PR comment, or upload as a workflow artifact.
+
 ## How cost estimates work
 
 Cost estimates are **directional**, not billing-grade — good enough to tell

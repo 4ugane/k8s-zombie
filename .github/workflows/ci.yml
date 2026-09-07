@@ -44,3 +44,40 @@ jobs:
         env:
           INTEGRATION_KUBE_CONTEXT: kind-k8s-zombie
         run: go test -tags=integration -v -timeout=5m ./test/integration/...
+
+  test-action:
+    name: Test composite action (kind)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: helm/kind-action@v1
+        with:
+          cluster_name: k8s-zombie-action-test
+      - name: apply fixtures
+        run: kubectl apply -f test/integration/testdata/fixtures.yaml
+      - name: run the action (default settings)
+        id: zombie
+        uses: ./
+        with:
+          output: json
+      - name: verify outputs
+        run: |
+          set -euo pipefail
+          echo "findings-count=${{ steps.zombie.outputs.findings-count }}"
+          if [ "${{ steps.zombie.outputs.findings-count }}" -lt 1 ]; then
+            echo "::error::expected at least 1 finding from the fixtures, got 0"
+            exit 1
+          fi
+          cat "${{ steps.zombie.outputs.report-path }}"
+      - name: run the action (fail-on-findings)
+        id: zombie-gate
+        uses: ./
+        continue-on-error: true
+        with:
+          fail-on-findings: "true"
+      - name: verify fail-on-findings actually failed the step
+        run: |
+          if [ "${{ steps.zombie-gate.outcome }}" != "failure" ]; then
+            echo "::error::expected fail-on-findings=true to fail the step, outcome was ${{ steps.zombie-gate.outcome }}"
+            exit 1
+          fi
