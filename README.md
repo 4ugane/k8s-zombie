@@ -73,8 +73,9 @@ archives are published for macOS, Linux, and Windows on both amd64 and arm64.
 
 ```sh
 # macOS (Apple Silicon), adjust os/arch for your platform
-curl -sL https://github.com/4ugane/k8s-zombie/releases/latest/download/k8s-zombie_darwin_arm64.tar.gz \
-  | tar xz k8s-zombie
+url="$(curl -s https://api.github.com/repos/4ugane/k8s-zombie/releases/latest \
+  | grep -o 'https://[^"]*k8s-zombie_[^"]*_darwin_arm64\.tar\.gz')"
+curl -sL "$url" | tar xz k8s-zombie
 sudo mv k8s-zombie /usr/local/bin/
 ```
 
