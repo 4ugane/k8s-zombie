@@ -80,6 +80,16 @@ runs:
         else
           tag="$ZOMBIE_VERSION"
         fi
+
+        # tag ends up as both a URL path segment and (via $asset below) a local
+        # file path component — validate it BEFORE either use. Without this, a
+        # version input containing e.g. "../" could write the downloaded
+        # archive outside $workdir (path traversal), independent of whatever
+        # the shell-injection hardening above already covers.
+        if ! [[ "$tag" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+([A-Za-z0-9.-]*)?$ ]]; then
+          echo "::error::invalid version: '$ZOMBIE_VERSION' (resolved tag: '$tag') — expected a semver-style tag like v0.1.5"
+          exit 1
+        fi
         version_no_v="${tag#v}"
 
         asset="k8s-zombie_${version_no_v}_${os}_${arch}.${ext}"
@@ -89,7 +99,7 @@ runs:
         curl -sfL "${base_url}/checksums.txt" -o "$workdir/checksums.txt"
         curl -sfL "${base_url}/${asset}" -o "$workdir/${asset}"
 
-        (cd "$workdir" && grep " ${asset}\$" checksums.txt | sha256sum -c -)
+        (cd "$workdir" && grep -F -- " ${asset}" checksums.txt | sha256sum -c -)
 
         if [ "$ext" = "zip" ]; then
           unzip -q "$workdir/${asset}" -d "$workdir/bin"
@@ -130,6 +140,12 @@ runs:
         count="$(jq '[.[] | select(.status == "Orphaned")] | length' "$workdir/report.json")"
         echo "findings-count=$count" >> "$GITHUB_OUTPUT"
 
+        # A second live scan for the requested format, when it isn't json — the
+        # CLI has no "re-render this JSON in another format" mode. This means
+        # findings-count and report-path reflect two separate snapshots of a
+        # live cluster; on rare timing (a Pod finishing, a PVC being deleted
+        # between the two calls) they can disagree in count. Documented
+        # limitation, not a bug: there's no cluster-side lock to scan against.
         report_path="$workdir/report.json"
         if [ -n "$ZOMBIE_OUTPUT" ] && [ "$ZOMBIE_OUTPUT" != "json" ]; then
           ext="txt"

@@ -258,6 +258,30 @@ func TestUnattachedPVCDetector_StatefulSetListErrorIsReturned(t *testing.T) {
 	}
 }
 
+func TestUnattachedPVCDetector_StatefulSetLookupIsListNotGet(t *testing.T) {
+	// Regression test: StatefulSets must be listed once per Scan, never fetched
+	// individually per PVC (same N+1 risk the StorageClass lookup already guards
+	// against above).
+	sts := statefulSetWithVolumeClaimTemplate("default", "myapp", 1, "data")
+	pvc1 := pvcWithStorage("default", "orphan-1", "gp3", 10)
+	pvc2 := pvcWithStorage("default", "orphan-2", "gp3", 20)
+	clientset := k8sfake.NewSimpleClientset(sts, pvc1, pvc2)
+
+	getCalls := 0
+	clientset.PrependReactor("get", "statefulsets", func(_ k8stesting.Action) (bool, runtime.Object, error) {
+		getCalls++
+		return false, nil, nil
+	})
+
+	d := detector.NewUnattachedPVCDetector(testEstimator())
+	if _, err := d.Scan(context.Background(), clientset); err != nil {
+		t.Fatalf("Scan() error = %v", err)
+	}
+	if getCalls != 0 {
+		t.Errorf("want 0 per-resource StatefulSet Get calls for 2 PVCs, got %d", getCalls)
+	}
+}
+
 func TestUnattachedPVCDetector_IgnoreLabelExcludesResource(t *testing.T) {
 	pvc := pvcWithStorage("default", "orphan-pvc", "gp3", 100)
 	pvc.Labels = map[string]string{"k8s-zombie.io/ignore": "true"}

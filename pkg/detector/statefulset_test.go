@@ -41,6 +41,24 @@ func TestIsStatefulSetScaleDownLeftover_NonNumericOrdinalDoesNotMatch(t *testing
 	}
 }
 
+func TestIsStatefulSetScaleDownLeftover_NegativeOrdinalDoesNotMatch(t *testing.T) {
+	statefulSets := []appsv1.StatefulSet{testStatefulSet("default", "myapp", 1, "data")}
+	if isStatefulSetScaleDownLeftover("default", "data-myapp--1", statefulSets) {
+		t.Error("want a negative-looking ordinal suffix to never match")
+	}
+}
+
+func TestIsStatefulSetScaleDownLeftover_ChecksEveryVolumeClaimTemplate(t *testing.T) {
+	sts := testStatefulSet("default", "myapp", 1, "data")
+	sts.Spec.VolumeClaimTemplates = append(sts.Spec.VolumeClaimTemplates,
+		corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Name: "logs"}})
+	statefulSets := []appsv1.StatefulSet{sts}
+
+	if !isStatefulSetScaleDownLeftover("default", "logs-myapp-1", statefulSets) {
+		t.Error("want a match against the second volumeClaimTemplate, not just the first")
+	}
+}
+
 func TestIsStatefulSetScaleDownLeftover_NilReplicasDefaultsToOne(t *testing.T) {
 	sts := testStatefulSet("default", "myapp", 1, "data")
 	sts.Spec.Replicas = nil // unset Replicas defaults to 1 per the Kubernetes API
