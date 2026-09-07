@@ -48,7 +48,7 @@ object.
 | `orphaned-pv` | PersistentVolumes stuck `Released`/`Available` after their claim is gone (still billing) | ✅ EBS $/GB-month |
 | `zero-endpoint-service` | Services (any type except `ExternalName`) with no ready endpoints | ✅ LoadBalancer-type only |
 | `unused-namespace` | Namespaces with no Pods, Deployments, StatefulSets, or CronJobs | — |
-| `unused-configmap-secret` | ConfigMaps/Secrets not referenced by any Pod's env, volume, projected volume, or image pull secrets | — |
+| `unused-configmap-secret` | ConfigMaps/Secrets not referenced by any Pod's env, volume, projected volume, or image pull secrets (Helm hook resources — `helm.sh/hook` annotation — are excluded) | — |
 | `orphaned-ingress` | Ingresses whose backend Services are *all* missing or dead | — |
 | `idle-deployment` | Deployments at 0 ready replicas that aren't managed by an HPA | — |
 | `stale-hpa` | HorizontalPodAutoscalers targeting a Deployment/StatefulSet that no longer exists | — |

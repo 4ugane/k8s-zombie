@@ -387,6 +387,38 @@ func TestUnusedConfigMapSecretDetector_IgnoreLabelExcludesConfigMap(t *testing.T
 	}
 }
 
+func TestUnusedConfigMapSecretDetector_HelmHookAnnotationExcludesConfigMap(t *testing.T) {
+	cm := newConfigMap("default", "hook-cm")
+	cm.Annotations = map[string]string{"helm.sh/hook": "pre-install"}
+
+	clientset := k8sfake.NewSimpleClientset(cm)
+	d := detector.NewUnusedConfigMapSecretDetector()
+
+	findings, err := d.Scan(context.Background(), clientset)
+	if err != nil {
+		t.Fatalf("Scan() error = %v", err)
+	}
+	if f := findFinding(findings, "ConfigMap", "hook-cm"); f != nil {
+		t.Fatalf("want Helm-hook-annotated hook-cm not reported, got %+v", *f)
+	}
+}
+
+func TestUnusedConfigMapSecretDetector_HelmHookAnnotationExcludesSecret(t *testing.T) {
+	secret := newSecret("default", "hook-secret", corev1.SecretTypeOpaque)
+	secret.Annotations = map[string]string{"helm.sh/hook": "pre-upgrade,post-upgrade"}
+
+	clientset := k8sfake.NewSimpleClientset(secret)
+	d := detector.NewUnusedConfigMapSecretDetector()
+
+	findings, err := d.Scan(context.Background(), clientset)
+	if err != nil {
+		t.Fatalf("Scan() error = %v", err)
+	}
+	if f := findFinding(findings, "Secret", "hook-secret"); f != nil {
+		t.Fatalf("want Helm-hook-annotated hook-secret not reported, got %+v", *f)
+	}
+}
+
 func TestUnusedConfigMapSecretDetector_IgnoreLabelExcludesSecret(t *testing.T) {
 	secret := newSecret("default", "orphan-secret", corev1.SecretTypeOpaque)
 	secret.Labels = map[string]string{"k8s-zombie.io/ignore": "true"}

@@ -63,6 +63,9 @@ func (d *UnusedConfigMapSecretDetector) Scan(ctx context.Context, clientset kube
 		if isIgnored(cm.Labels) {
 			continue
 		}
+		if isHelmHook(cm.Annotations) {
+			continue
+		}
 		findings = append(findings, finding.Finding{
 			Detector:   d.Name(),
 			Kind:       "ConfigMap",
@@ -82,6 +85,9 @@ func (d *UnusedConfigMapSecretDetector) Scan(ctx context.Context, clientset kube
 			continue
 		}
 		if isIgnored(secret.Labels) {
+			continue
+		}
+		if isHelmHook(secret.Annotations) {
 			continue
 		}
 		findings = append(findings, finding.Finding{
