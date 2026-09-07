@@ -74,6 +74,7 @@ func (d *StaleHPADetector) Scan(ctx context.Context, clientset kubernetes.Interf
 			Reason:     withAge(fmt.Sprintf("target %s %q no longer exists", targetKind, targetName), "created", hpa.CreationTimestamp),
 			Confidence: finding.ConfidenceHigh,
 			Status:     finding.StatusOrphaned,
+			CreatedAt:  hpa.CreationTimestamp.Time,
 		})
 	}
 	return findings, nil

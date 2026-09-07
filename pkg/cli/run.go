@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"time"
 
 	"k8s.io/client-go/kubernetes"
 
@@ -30,6 +31,13 @@ type Options struct {
 	// detector. Must not be nil — the caller loads it via cost.DefaultPricingTable()
 	// or cost.LoadPricingTable() (for --pricing-file) before calling Run.
 	PricingTable *cost.PricingTable
+	// MinAge, if non-zero, drops any finding whose resource was created more
+	// recently than MinAge ago — a grace period to avoid false positives during
+	// an active rollout (e.g. a Deployment reporting 0 ready replicas seconds
+	// after being created). Zero (the default) disables the filter entirely.
+	// A finding with a zero CreatedAt (see finding.Finding) is never affected,
+	// regardless of MinAge.
+	MinAge time.Duration
 }
 
 // Run scans clientset with every v1 detector, filters the results per opts, and
@@ -75,6 +83,9 @@ func filterFindings(findings []finding.Finding, opts Options) []finding.Finding 
 			if exclude[f.Namespace] {
 				continue
 			}
+		}
+		if opts.MinAge > 0 && !f.CreatedAt.IsZero() && time.Since(f.CreatedAt) < opts.MinAge {
+			continue
 		}
 		out = append(out, f)
 	}

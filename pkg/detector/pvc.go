@@ -62,6 +62,7 @@ func (d *UnattachedPVCDetector) Scan(ctx context.Context, clientset kubernetes.I
 			Confidence:      finding.ConfidenceHigh,
 			Status:          finding.StatusOrphaned,
 			CostUSDPerMonth: d.estimateCost(scTypes, pvc),
+			CreatedAt:       pvc.CreationTimestamp.Time,
 		})
 	}
 	return findings, nil

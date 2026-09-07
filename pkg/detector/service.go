@@ -60,6 +60,7 @@ func (d *ZeroEndpointServiceDetector) Scan(ctx context.Context, clientset kubern
 			Confidence:      finding.ConfidenceHigh,
 			Status:          finding.StatusOrphaned,
 			CostUSDPerMonth: d.estimateCost(svc),
+			CreatedAt:       svc.CreationTimestamp.Time,
 		})
 	}
 	return findings, nil

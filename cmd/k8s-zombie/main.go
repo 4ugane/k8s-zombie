@@ -5,6 +5,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/kubernetes"
@@ -44,6 +45,7 @@ func newScanCmd() *cobra.Command {
 		excludeNamespaces []string
 		output            string
 		pricingFile       string
+		minAge            time.Duration
 	)
 
 	cmd := &cobra.Command{
@@ -63,6 +65,7 @@ func newScanCmd() *cobra.Command {
 				ExcludeNamespaces: excludeNamespaces,
 				Output:            output,
 				PricingTable:      table,
+				MinAge:            minAge,
 			}
 			return cli.Run(cmd.Context(), clientset, opts, cmd.OutOrStdout())
 		},
@@ -73,6 +76,7 @@ func newScanCmd() *cobra.Command {
 	cmd.Flags().StringSliceVar(&excludeNamespaces, "exclude-namespace", nil, "namespace to exclude from findings (repeatable)")
 	cmd.Flags().StringVar(&output, "output", "table", "output format: table, json, markdown, or html")
 	cmd.Flags().StringVar(&pricingFile, "pricing-file", "", "path to a custom pricing YAML file (default: bundled AWS pricing)")
+	cmd.Flags().DurationVar(&minAge, "min-age", 0, "ignore resources created more recently than this (e.g. 1h, 30m); disabled by default")
 
 	return cmd
 }

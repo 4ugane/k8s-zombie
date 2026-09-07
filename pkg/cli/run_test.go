@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"testing"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -161,6 +162,108 @@ func TestRun_ExcludeNamespaceFilterDropsMatches(t *testing.T) {
 		if f.Namespace == "ns-b" {
 			t.Errorf("want ns-b excluded, got a finding in it: %+v", f)
 		}
+	}
+}
+
+func TestRun_MinAgeFilterExcludesRecentlyCreatedResource(t *testing.T) {
+	pvc := orphanPVC("default", "orphan-pvc", 10)
+	pvc.CreationTimestamp = metav1.NewTime(time.Now())
+	clientset := k8sfake.NewSimpleClientset(pvc)
+
+	var out bytes.Buffer
+	err := cli.Run(context.Background(), clientset, cli.Options{Output: "json", MinAge: time.Hour, PricingTable: testPricingTable()}, &out)
+	if err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+	var got []finding.Finding
+	if err := json.Unmarshal(out.Bytes(), &got); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v", err)
+	}
+	for _, f := range got {
+		if f.Name == "orphan-pvc" {
+			t.Errorf("want a resource created moments ago excluded under MinAge=1h, got it reported: %+v", f)
+		}
+	}
+}
+
+func TestRun_MinAgeFilterKeepsOlderResource(t *testing.T) {
+	pvc := orphanPVC("default", "orphan-pvc", 10)
+	pvc.CreationTimestamp = metav1.NewTime(time.Now().Add(-48 * time.Hour))
+	clientset := k8sfake.NewSimpleClientset(pvc)
+
+	var out bytes.Buffer
+	err := cli.Run(context.Background(), clientset, cli.Options{Output: "json", MinAge: time.Hour, PricingTable: testPricingTable()}, &out)
+	if err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+	var got []finding.Finding
+	if err := json.Unmarshal(out.Bytes(), &got); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v", err)
+	}
+	found := false
+	for _, f := range got {
+		if f.Name == "orphan-pvc" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("want a resource created 48h ago still reported under MinAge=1h, got none: %+v", got)
+	}
+}
+
+func TestRun_MinAgeZeroValueDisablesFiltering(t *testing.T) {
+	pvc := orphanPVC("default", "orphan-pvc", 10)
+	pvc.CreationTimestamp = metav1.NewTime(time.Now())
+	clientset := k8sfake.NewSimpleClientset(pvc)
+
+	var out bytes.Buffer
+	// MinAge left unset (zero value) — the flag is opt-in.
+	err := cli.Run(context.Background(), clientset, cli.Options{Output: "json", PricingTable: testPricingTable()}, &out)
+	if err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+	var got []finding.Finding
+	if err := json.Unmarshal(out.Bytes(), &got); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v", err)
+	}
+	found := false
+	for _, f := range got {
+		if f.Name == "orphan-pvc" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("want MinAge=0 (unset) to report even a brand-new resource, got none: %+v", got)
+	}
+}
+
+func TestRun_MinAgeNeverExcludesFindingsWithoutACreationTimestamp(t *testing.T) {
+	// completed-jobs-and-pods findings deliberately don't carry a CreatedAt (a
+	// terminal state, not an initialization race) — MinAge must never suppress
+	// them even when set very high.
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "finished-pod"},
+		Status:     corev1.PodStatus{Phase: corev1.PodSucceeded},
+	}
+	clientset := k8sfake.NewSimpleClientset(pod)
+
+	var out bytes.Buffer
+	err := cli.Run(context.Background(), clientset, cli.Options{Output: "json", MinAge: 24 * time.Hour, PricingTable: testPricingTable()}, &out)
+	if err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+	var got []finding.Finding
+	if err := json.Unmarshal(out.Bytes(), &got); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v", err)
+	}
+	found := false
+	for _, f := range got {
+		if f.Name == "finished-pod" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("want a completed Pod finding to survive MinAge filtering (no CreatedAt set), got none: %+v", got)
 	}
 }
 

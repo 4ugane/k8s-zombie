@@ -121,6 +121,7 @@ k8s-zombie scan [flags]
 | `--exclude-namespace` | (none) | Namespace to drop from the report — repeatable, e.g. `--exclude-namespace kube-system --exclude-namespace argocd` |
 | `--output` | `table` | `table`, `json`, or `markdown` |
 | `--pricing-file` | bundled AWS pricing | Path to a YAML file overriding the built-in cost table (see [Cost estimates](#how-cost-estimates-work)) |
+| `--min-age` | disabled | Ignore resources created more recently than this (e.g. `1h`, `30m`) — a grace period to avoid false positives on a resource still initializing mid-rollout. Disabled (`0`) by default; opt in for CI/CD pipelines where scans can run seconds after a deploy |
 
 ```sh
 # Default: scan the current context, human-readable table

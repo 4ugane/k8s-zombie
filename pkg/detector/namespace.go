@@ -94,6 +94,7 @@ func (d *UnusedNamespaceDetector) Scan(ctx context.Context, clientset kubernetes
 			Reason:     withAge("no active Pods/Deployments/StatefulSets/CronJobs", "created", ns.CreationTimestamp),
 			Confidence: finding.ConfidenceHigh,
 			Status:     finding.StatusOrphaned,
+			CreatedAt:  ns.CreationTimestamp.Time,
 		})
 	}
 	return findings, nil

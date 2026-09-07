@@ -82,6 +82,7 @@ func (d *OrphanedIngressDetector) Scan(ctx context.Context, clientset kubernetes
 			Reason:     withAge("all backend Services are missing or have 0 ready endpoints", "created", ing.CreationTimestamp),
 			Confidence: finding.ConfidenceHigh,
 			Status:     finding.StatusOrphaned,
+			CreatedAt:  ing.CreationTimestamp.Time,
 		})
 	}
 	return findings, nil

@@ -56,6 +56,7 @@ func (d *IdleDeploymentDetector) Scan(ctx context.Context, clientset kubernetes.
 			Reason:     withAge("0 ready replicas, not managed by any HorizontalPodAutoscaler", "created", dep.CreationTimestamp),
 			Confidence: finding.ConfidenceHigh,
 			Status:     finding.StatusOrphaned,
+			CreatedAt:  dep.CreationTimestamp.Time,
 		})
 	}
 	return findings, nil

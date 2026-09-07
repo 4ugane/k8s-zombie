@@ -71,6 +71,7 @@ func (d *UnusedConfigMapSecretDetector) Scan(ctx context.Context, clientset kube
 			Reason:     withAge("not referenced by any Pod (env, volume, or projected volume)", "created", cm.CreationTimestamp),
 			Confidence: finding.ConfidenceLow,
 			Status:     finding.StatusOrphaned,
+			CreatedAt:  cm.CreationTimestamp.Time,
 		})
 	}
 	for _, secret := range secrets.Items {
@@ -91,6 +92,7 @@ func (d *UnusedConfigMapSecretDetector) Scan(ctx context.Context, clientset kube
 			Reason:     withAge("not referenced by any Pod (env, volume, or projected volume)", "created", secret.CreationTimestamp),
 			Confidence: finding.ConfidenceLow,
 			Status:     finding.StatusOrphaned,
+			CreatedAt:  secret.CreationTimestamp.Time,
 		})
 	}
 	return findings, nil
