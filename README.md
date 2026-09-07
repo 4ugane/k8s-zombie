@@ -44,7 +44,7 @@ object.
 
 | Detector | What it flags | Cost estimate |
 |---|---|---|
-| `unattached-pvc` | PersistentVolumeClaims not referenced by any Pod volume | ✅ EBS $/GB-month |
+| `unattached-pvc` | PersistentVolumeClaims not referenced by any Pod volume (PVCs a StatefulSet is retaining past a scale-down for a future scale-up are excluded) | ✅ EBS $/GB-month |
 | `orphaned-pv` | PersistentVolumes stuck `Released`/`Available` after their claim is gone (still billing) | ✅ EBS $/GB-month |
 | `zero-endpoint-service` | Services (any type except `ExternalName`) with no ready endpoints | ✅ LoadBalancer-type only |
 | `unused-namespace` | Namespaces with no Pods, Deployments, StatefulSets, or CronJobs | — |

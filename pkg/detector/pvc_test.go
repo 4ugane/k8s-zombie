@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -17,6 +18,18 @@ import (
 	"github.com/4ugane/k8s-zombie/pkg/detector"
 	"github.com/4ugane/k8s-zombie/pkg/finding"
 )
+
+func statefulSetWithVolumeClaimTemplate(ns, name string, replicas int32, vctName string) *appsv1.StatefulSet {
+	return &appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{Namespace: ns, Name: name},
+		Spec: appsv1.StatefulSetSpec{
+			Replicas: &replicas,
+			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+				{ObjectMeta: metav1.ObjectMeta{Name: vctName}},
+			},
+		},
+	}
+}
 
 func gp3StorageClass(name string) *storagev1.StorageClass {
 	return &storagev1.StorageClass{
@@ -190,6 +203,58 @@ func TestUnattachedPVCDetector_StorageClassLookupIsListNotGet(t *testing.T) {
 	}
 	if getCalls != 0 {
 		t.Errorf("want 0 per-resource StorageClass Get calls for 2 PVCs sharing 1 StorageClass, got %d", getCalls)
+	}
+}
+
+func TestUnattachedPVCDetector_StatefulSetScaleDownLeftoverIsNotReported(t *testing.T) {
+	// Replicas=1 but this PVC is ordinal 1 (data-myapp-1) — a scale-down
+	// leftover Kubernetes retains by default for a future scale-up, not an
+	// abandoned PVC.
+	sts := statefulSetWithVolumeClaimTemplate("default", "myapp", 1, "data")
+	pvc := pvcWithStorage("default", "data-myapp-1", "gp3", 10)
+
+	clientset := k8sfake.NewSimpleClientset(sts, pvc)
+	d := detector.NewUnattachedPVCDetector(nil)
+
+	findings, err := d.Scan(context.Background(), clientset)
+	if err != nil {
+		t.Fatalf("Scan() error = %v", err)
+	}
+	if len(findings) != 0 {
+		t.Fatalf("want 0 findings for a StatefulSet scale-down leftover PVC, got %+v", findings)
+	}
+}
+
+func TestUnattachedPVCDetector_StatefulSetActiveOrdinalStillReportedIfUnreferenced(t *testing.T) {
+	// Replicas=2, ordinal 0 is within the active range — if it's genuinely
+	// unmounted (no Pod references it), that's still a real orphan; the
+	// StatefulSet exclusion must not blanket-exempt every StatefulSet PVC.
+	sts := statefulSetWithVolumeClaimTemplate("default", "myapp", 2, "data")
+	pvc := pvcWithStorage("default", "data-myapp-0", "gp3", 10)
+
+	clientset := k8sfake.NewSimpleClientset(sts, pvc)
+	d := detector.NewUnattachedPVCDetector(nil)
+
+	findings, err := d.Scan(context.Background(), clientset)
+	if err != nil {
+		t.Fatalf("Scan() error = %v", err)
+	}
+	if len(findings) != 1 {
+		t.Fatalf("want 1 finding for an unreferenced active-ordinal StatefulSet PVC, got %+v", findings)
+	}
+}
+
+func TestUnattachedPVCDetector_StatefulSetListErrorIsReturned(t *testing.T) {
+	pvc := pvcWithStorage("default", "orphan-pvc", "gp3", 10)
+	clientset := k8sfake.NewSimpleClientset(pvc)
+	clientset.PrependReactor("list", "statefulsets", func(_ k8stesting.Action) (bool, runtime.Object, error) {
+		return true, nil, errors.New("simulated api error")
+	})
+	d := detector.NewUnattachedPVCDetector(testEstimator())
+
+	_, err := d.Scan(context.Background(), clientset)
+	if err == nil {
+		t.Fatal("want an error when listing StatefulSets fails, got nil")
 	}
 }
 

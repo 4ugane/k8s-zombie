@@ -37,6 +37,11 @@ func (d *UnattachedPVCDetector) Scan(ctx context.Context, clientset kubernetes.I
 	}
 	referenced := referencedPVCs(pods.Items)
 
+	statefulSets, err := clientset.AppsV1().StatefulSets(metav1.NamespaceAll).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("listing statefulsets: %w", err)
+	}
+
 	var scTypes map[string]string
 	if d.estimator != nil {
 		scTypes, err = storageClassVolumeTypes(ctx, clientset)
@@ -48,6 +53,9 @@ func (d *UnattachedPVCDetector) Scan(ctx context.Context, clientset kubernetes.I
 	var findings []finding.Finding
 	for _, pvc := range pvcs.Items {
 		if referenced[pvc.Namespace+"/"+pvc.Name] {
+			continue
+		}
+		if isStatefulSetScaleDownLeftover(pvc.Namespace, pvc.Name, statefulSets.Items) {
 			continue
 		}
 		if isIgnored(pvc.Labels) {
