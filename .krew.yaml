@@ -1,0 +1,53 @@
+apiVersion: krew.googlecontainertools.github.com/v1alpha2
+kind: Plugin
+metadata:
+  name: zombie
+spec:
+  version: {{ .TagName }}
+  homepage: https://github.com/4ugane/k8s-zombie
+  shortDescription: Find orphaned resources burning budget
+  caveats: |
+    Requires a valid kubeconfig. See https://github.com/4ugane/k8s-zombie
+    for full documentation.
+  description: |
+    k8s-zombie scans a cluster for orphaned resources (unattached PVCs,
+    zero-endpoint Services, idle Deployments, stale HPAs, and more) and
+    reports them with AWS cost estimates. Read-only — never deletes or
+    modifies anything.
+  platforms:
+  - selector:
+      matchLabels:
+        os: darwin
+        arch: amd64
+    {{addURIAndSha "https://github.com/4ugane/k8s-zombie/releases/download/{{ .TagName }}/kubectl-zombie_{{ .TagName }}_darwin_amd64.tar.gz" .TagName }}
+    bin: kubectl-zombie
+  - selector:
+      matchLabels:
+        os: darwin
+        arch: arm64
+    {{addURIAndSha "https://github.com/4ugane/k8s-zombie/releases/download/{{ .TagName }}/kubectl-zombie_{{ .TagName }}_darwin_arm64.tar.gz" .TagName }}
+    bin: kubectl-zombie
+  - selector:
+      matchLabels:
+        os: linux
+        arch: amd64
+    {{addURIAndSha "https://github.com/4ugane/k8s-zombie/releases/download/{{ .TagName }}/kubectl-zombie_{{ .TagName }}_linux_amd64.tar.gz" .TagName }}
+    bin: kubectl-zombie
+  - selector:
+      matchLabels:
+        os: linux
+        arch: arm64
+    {{addURIAndSha "https://github.com/4ugane/k8s-zombie/releases/download/{{ .TagName }}/kubectl-zombie_{{ .TagName }}_linux_arm64.tar.gz" .TagName }}
+    bin: kubectl-zombie
+  - selector:
+      matchLabels:
+        os: windows
+        arch: amd64
+    {{addURIAndSha "https://github.com/4ugane/k8s-zombie/releases/download/{{ .TagName }}/kubectl-zombie_{{ .TagName }}_windows_amd64.zip" .TagName }}
+    bin: kubectl-zombie.exe
+  - selector:
+      matchLabels:
+        os: windows
+        arch: arm64
+    {{addURIAndSha "https://github.com/4ugane/k8s-zombie/releases/download/{{ .TagName }}/kubectl-zombie_{{ .TagName }}_windows_arm64.zip" .TagName }}
+    bin: kubectl-zombie.exe

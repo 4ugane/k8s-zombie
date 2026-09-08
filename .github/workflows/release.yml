@@ -26,4 +26,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
-          KREW_INDEX_GITHUB_TOKEN: ${{ secrets.KREW_INDEX_GITHUB_TOKEN }}
+      # Reads .krew.yaml and opens the PR to kubernetes-sigs/krew-index
+      # directly — needs no token/secret from this repo at all; see
+      # https://krew.sigs.k8s.io/docs/developer-guide/release/automating-updates/
+      - name: Update new version in krew-index
+        uses: rajatjindal/krew-release-bot@v0.0.50

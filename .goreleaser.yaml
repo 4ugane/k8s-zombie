@@ -54,8 +54,12 @@ archives:
     format_overrides:
       - goos: windows
         formats: [zip]
+    # .Tag (not .Version) — krew-release-bot's .krew.yaml template only exposes
+    # .TagName (the full tag, "v0.1.5"), with no string-trim function to derive
+    # a "0.1.5"-style version from it. Matching the archive name to .TagName
+    # directly avoids needing one.
     name_template: >-
-      kubectl-zombie_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+      kubectl-zombie_{{ .Tag }}_{{ .Os }}_{{ .Arch }}
 
 checksum:
   name_template: "checksums.txt"
@@ -102,31 +106,8 @@ homebrew_casks:
             system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/k8s-zombie"]
           end
 
-# Generates the krew plugin manifest and pushes it to a staging repo (a fork
-# of kubernetes-sigs/krew-index). krew-index doesn't accept direct pushes —
-# opening the actual PR from that fork to upstream is a manual, one-time-then-
-# per-release step; see README/project status.
-krews:
-  - name: zombie
-    ids: [krew]
-    repository:
-      owner: 4ugane
-      name: krew-index
-      token: "{{ .Env.KREW_INDEX_GITHUB_TOKEN }}"
-    # Without this, goreleaser's default committer (goreleaserbot) authors the
-    # manifest commit — and EasyCLA checks the commit author, not the PR
-    # opener, so a CLA signed under the 4ugane account never attaches to a
-    # goreleaserbot-authored commit. Match the identity that signs the CLA.
-    commit_author:
-      name: 4ugane
-      email: 325434070+4ugane@users.noreply.github.com
-    homepage: "https://github.com/4ugane/k8s-zombie"
-    short_description: "Find orphaned resources burning budget"
-    description: |
-      k8s-zombie scans a cluster for orphaned resources (unattached PVCs,
-      zero-endpoint Services, idle Deployments, stale HPAs, and more) and
-      reports them with AWS cost estimates. Read-only — never deletes or
-      modifies anything.
-    caveats: |
-      Requires a valid kubeconfig. See https://github.com/4ugane/k8s-zombie
-      for full documentation.
+# krew manifest updates are handled by krew-release-bot (a separate step in
+# .github/workflows/release.yml, after this goreleaser run), which reads
+# .krew.yaml at the repo root and opens the PR to kubernetes-sigs/krew-index
+# directly — no token from us, no intermediate fork/manual-PR step. See
+# https://krew.sigs.k8s.io/docs/developer-guide/release/automating-updates/

@@ -105,9 +105,12 @@ brew tap 4ugane/tap
 brew install k8s-zombie
 ```
 
-A `krew` plugin manifest is generated on every release too — see
-[Project status](#project-status) for what's left before
-`kubectl krew install zombie` works directly.
+**Or via krew** (the [kubectl plugin manager](https://krew.sigs.k8s.io/)):
+
+```sh
+kubectl krew install zombie
+kubectl zombie scan
+```
 
 ## Usage
 
@@ -224,10 +227,11 @@ pipelines:
 
 - **Homebrew** — `brew install 4ugane/tap/k8s-zombie` (verified end-to-end,
   including the macOS Gatekeeper quarantine fix)
-- **krew** — plugin manifest is generated and pushed to a staging fork
-  (`4ugane/krew-index`) on every tagged release; opening the PR from that
-  fork to upstream `kubernetes-sigs/krew-index` is still a manual,
-  per-release step until `kubectl krew install zombie` works directly
+- **krew** — `kubectl krew install zombie` (merged into the official
+  [`kubernetes-sigs/krew-index`](https://github.com/kubernetes-sigs/krew-index));
+  future releases update it automatically via
+  [`krew-release-bot`](https://github.com/rajatjindal/krew-release-bot),
+  no manual PR needed
 
 A `kind`-based integration test exercises a full scan end-to-end against a
 real (if ephemeral) API server with real controllers, and runs in CI on every
